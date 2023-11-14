@@ -12,6 +12,7 @@ import pathlib
 import pandas as pd
 
 import torch as ch
+from typing import Dict, Union
 
 
 def as_tuple(x, N, t=None):
@@ -66,7 +67,6 @@ def to_numeric_classes(values):
 
 
 def create_cmap(values, colors):
-
     from matplotlib.pyplot import Normalize
     import matplotlib
 
@@ -292,7 +292,6 @@ class batchify:
             yield items[i : i + n]
 
     def launch_process(self, batch):
-
         for b, lock, load_func, queue in zip(
             batch, self.locks, self.load_func, self.queues
         ):
@@ -309,7 +308,6 @@ class batchify:
         return self
 
     def get_batch(self):
-
         indices = (self.start_index, self.start_index + self.batch_size)
 
         # check if we exhausted the samples
@@ -337,7 +335,6 @@ class batchify:
         return batch
 
     def __next__(self):
-
         if self.terminate:
             raise StopIteration()
 
@@ -369,7 +366,6 @@ def resample_images(
     mode="nearest",
     data_format="channels_first",
 ):
-
     if data_format == "channels_first":
         output_images = np.zeros(
             (len(images), images[0].shape[0]) + target_shape,
@@ -382,7 +378,6 @@ def resample_images(
         )
 
     for i, image in enumerate(images):
-
         # the first step is to resample to fit it into the target shape
         if data_format != "channels_first":
             image = image.transpose(2, 0, 1)
@@ -444,7 +439,12 @@ def _download_url(url: str, filename: str):
         urllib.request.urlretrieve(url, filename=filename, reporthook=t.update_to)
 
 
-def download_dataset(path, name_url_mapper, prepend_url="", extract=False):
+def download_dataset(
+    name: str,
+    name_to_url: Dict[str, str],
+    path: Union[str, pathlib.PosixPath] = None,
+    extract: bool = False,
+):
     """dataset downlading utility
 
     Args:
@@ -461,14 +461,23 @@ def download_dataset(path, name_url_mapper, prepend_url="", extract=False):
         the common url to prepend onto each url (value) in name_url_mapper mapper
 
     """
-    folder = pathlib.Path(path)
+    if path is None:
+        if "AIDATASET_PATH" in os.environ:
+            path = os.environ["AIDATASET_PATH"]
+            print(f"path not given, using env variable {path}")
+        else:
+            raise ValueError(
+                "given path and env. variable AIDATASET_PATH can not both be undefined"
+            )
+
+    folder = pathlib.Path(path) / name
     folder.mkdir(parents=True, exist_ok=True)
 
-    for filename, url in name_url_mapper.items():
+    for filename, url in name_to_url.items():
         file_path = folder / filename
         print("\t...Downloading {}".format(filename))
         if not file_path.exists():
-            _download_url(prepend_url + url, file_path)
+            _download_url(url, file_path)
         else:
             # we assume that the correct extraction process was done
             # before
@@ -1091,3 +1100,99 @@ def base_two(x: ch.Tensor, bits: int):
     with ch.no_grad():
         mask = 2 ** ch.arange(bits).to(x.device, x.dtype)
         return x.view(-1, 1).bitwise_and(mask).ne_(0).byte()
+
+
+def dataset_to_lightning(
+    fn,
+    path,
+    batch_size,
+    num_workers=0,
+    create_val=0,
+    train_transform=None,
+    val_transform=None,
+):
+    import lightning.pytorch as pl
+    import torch
+    from torch.utils.data import TensorDataset, DataLoader, random_split, Dataset
+    from torchvision import datasets
+    from torchvision.transforms import ToTensor
+
+    class MyDataset(Dataset):
+        def __init__(self, X, y, transform=None):
+            self.X = X
+            self.y = y
+            self.transform = transform
+
+        def __getitem__(self, index):
+            X, y = self.X[index], self.y[index]
+            if self.transform:
+                X = self.transform(X)
+            return X, y
+
+        def __len__(self):
+            return len(self.X)
+
+    class DataModule(pl.LightningDataModule):
+        def __init__(
+            self,
+            fn,
+            path,
+            batch_size,
+            create_val,
+            num_workers,
+            train_transform=None,
+            val_transform=None,
+        ):
+            super().__init__()
+            self.fn = fn
+            self.path = path
+            self.batch_size = batch_size
+            self.create_val = create_val
+            self.num_workers = num_workers
+            self.train_transform = train_transform
+            self.val_transform = val_transform
+
+        def setup(self, stage: str):
+            if hasattr(self, "train"):
+                return
+            dataset = self.fn(self.path)
+            self.train = MyDataset(
+                dataset["train"]["X"],
+                dataset["train"]["y"],
+                transform=self.train_transform,
+            )
+            if "val" in dataset.keys():
+                self.val = MyDataset(
+                    dataset["val"]["X"],
+                    dataset["val"]["y"],
+                    transform=self.val_transform,
+                )
+            if "test" in dataset.keys():
+                self.test = MyDataset(
+                    dataset["test"]["X"],
+                    dataset["test"]["y"],
+                    transform=self.val_transform,
+                )
+
+        def train_dataloader(self):
+            return DataLoader(
+                self.train,
+                batch_size=self.batch_size,
+                drop_last=True,
+                shuffle=True,
+                num_workers=self.num_workers,
+                persistent_workers=self.num_workers > 0,
+            )
+
+        def val_dataloader(self):
+            return DataLoader(self.val, batch_size=self.batch_size)
+
+        def test_dataloader(self):
+            return DataLoader(self.test, batch_size=self.batch_size)
+
+        def predict_dataloader(self):
+            return DataLoader(self.predict, batch_size=self.batch_size)
+
+    return DataModule(
+        fn, path, batch_size, create_val, num_workers, train_transform, val_transform
+    )

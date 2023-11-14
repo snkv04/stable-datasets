@@ -23,9 +23,12 @@ cite = """
 _name = "arabic_digits"
 
 _urls = {
-    "https://github.com/mloey/Arabic-Handwritten-Digits-Dataset/raw/master/Test%20Images.zip": "TestImages.zip",
-    "https://github.com/mloey/Arabic-Handwritten-Digits-Dataset/raw/master/Train%20Images.zip": "TrainImages.zip",
+    "TestImages.zip": "https://github.com/mloey/Arabic-Handwritten-Digits-Dataset/raw/master/Test%20Images.zip",
+    "TrainImages.zip": "https://github.com/mloey/Arabic-Handwritten-Digits-Dataset/raw/master/Train%20Images.zip",
 }
+
+SHAPE = (1, 28, 28)
+N_SAMPLES = 60000
 
 
 def load(path=None):
@@ -56,11 +59,8 @@ def load(path=None):
 
     """
 
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
     t0 = time.time()
-    download_dataset(path, _name, _urls)
+    download_dataset(_name, _urls, path=path)
     train_images = []
     test_images = []
     train_labels = []
@@ -80,14 +80,17 @@ def load(path=None):
             content = archive.read(entry)
             train_images.append(mpimg.imread(io.BytesIO(content), "png"))
             train_labels.append(int(entry.filename.split("_")[-1][:-4]))
-
-    data = {
-        "train_set/images": np.array(train_images),
-        "train_set/labels": np.array(train_labels),
-        "test_set/images": np.array(test_images),
-        "test_set/labels": np.array(test_labels),
+    dataset = {
+        "train": {
+            "X": np.array(train_images)[:, None].astype("float32"),
+            "y": np.array(train_labels).astype("int"),
+        },
+        "val": {
+            "X": np.array(test_images)[:, None].astype("float32"),
+            "y": np.array(test_labels).astype("int"),
+        },
     }
 
     print("Dataset arabic_digits loaded in {0:.2f}s.".format(time.time() - t0))
 
-    return data
+    return dataset

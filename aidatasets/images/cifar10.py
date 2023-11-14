@@ -8,10 +8,12 @@ import numpy as np
 from tqdm import tqdm
 
 
-_dataset = "cifar10"
+_name = "cifar10"
 _urls = {
-    "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz": "cifar-10-python.tar.gz"
+    "cifar-10-python.tar.gz": "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
 }
+SHAPE = (3, 32, 32)
+N_SAMPLES = 50000
 
 
 label_to_name = {
@@ -61,14 +63,11 @@ def load(path=None):
 
     """
 
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
-    download_dataset(path, _dataset, _urls)
+    download_dataset(_name, _urls, path=path)
 
     t0 = time.time()
 
-    tar = tarfile.open(os.path.join(path, _dataset, "cifar10.tar.gz"), "r:gz")
+    tar = tarfile.open(os.path.join(path, _name, "cifar-10-python.tar.gz"), "r:gz")
 
     # Load train set
     train_images = list()
@@ -87,14 +86,16 @@ def load(path=None):
     test_images = data_dic["data"].reshape((-1, 3, 32, 32)).astype("float32")
     test_labels = np.array(data_dic["labels"]).astype("int32")
 
-    data = {
-        "train_set/images": train_images,
-        "train_set/labels": train_labels,
-        "test_set/images": test_images,
-        "test_set/labels": test_labels,
-        "label_to_name": label_to_name,
+    dataset = {
+        "train": {
+            "X": np.transpose(train_images, (0, 2, 3, 1)),
+            "y": train_labels,
+        },
+        "val": {
+            "X": np.transpose(test_images, (0, 2, 3, 1)),
+            "y": test_labels,
+        },
     }
-
     print("Dataset cifar10 loaded in{0:.2f}s.".format(time.time() - t0))
 
-    return data
+    return dataset

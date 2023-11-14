@@ -18,4 +18,5 @@ from . import (
     rock_paper_scissors,
     celeb,
     face_pointing,
+    tinyimagenet
 )

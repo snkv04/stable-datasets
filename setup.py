@@ -22,15 +22,15 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="numpy-datasets",
+    name="aidatasets",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     author="Randall Balestriero",
     author_email="randallbalestriero@gmail.com",
-    description="Datasets downloading/batching/processing in Numpy",
+    description="Datasets downloading and loading",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/RandallBalestriero/numpy-datasets.git",
+    url="https://github.com/RandallBalestriero/AI-datasets.git",
     packages=find_packages(exclude=["examples"]),
     classifiers=[
         "Natural Language :: English",
@@ -42,6 +42,10 @@ setup(
     install_requires=[
         "numpy",
         "scipy",
+        "pydub",
+        "h5py",
+        "soundfile",
+        "pretty_midi"
     ],
     license="Apache-2.0",
 )

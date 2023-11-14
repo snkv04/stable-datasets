@@ -5,11 +5,15 @@ import numpy as np
 import imageio
 import tarfile
 from ..utils import download_dataset
-
+from PIL import Image
 
 _urls = {
-    "http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/CUB_200_2011.tgz": "CUB_200_2011.tgz"
+    "CUB_200_2011.tgz": "http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/CUB_200_2011.tgz"
 }
+
+N_SAMPLES = 11788
+N_CLASSES = 200
+_name = "cub200"
 
 
 def load(path=None):
@@ -24,10 +28,7 @@ def load(path=None):
     The dataset is obtained from `Kaggle <https://www.kaggle.com/pavansanagapati/urban-sound-classification>_`
     """
 
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
-    download_dataset(path, "cub200", _urls)
+    download_dataset(_name, _urls, path=path)
 
     tar = tarfile.open(path + "cub200/CUB_200_2011.tgz", "r:gz")
 
@@ -46,32 +47,23 @@ def load(path=None):
     # Load dataset
     labels = list()
     boxes = list()
-    data = np.empty((11788, 3, 500, 500)) * np.nan
-    cpt = 0
-    nb_removed_images = 0
     for member in tqdm(tar.getmembers()):
         if "CUB_200_2011/images/" in member.name and "jpg" in member.name:
             class_ = member.name.split("/")[2].split(".")[0]
             image_id = member.name.split("_")[-1][:-4]
             f = tar.extractfile(member)
-            im = imageio.imread(f, format="jpg")
-            if len(im.shape) == 2:
-                nb_removed_images += 1
-                print("i")
-                continue
-            data[cpt, :, : im.shape[0], : im.shape[1]] = im.transpose([2, 0, 1])
+            data.append(Image.open(f).convert("RGB"))
             labels.append(int(class_))
             boxes.append(bounding_boxes[image_id])
-            cpt += 1
-    if nb_removed_images:
-        data = data[:-nb_removed_images]
     labels = np.array(labels).astype("int32")
 
-    data = {
-        "images": data,
-        "labels": labels,
-        "boxes": boxes,
-        "classes": classes,
-    }
+    # data = {
+    #     "images": data,
+    #     "labels": labels,
+    #     "boxes": boxes,
+    #     "classes": classes,
+    # }
 
-    return data
+    dataset = {"train": {"X": data, "y": labels}}
+
+    return dataset

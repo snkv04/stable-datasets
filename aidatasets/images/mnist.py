@@ -6,7 +6,9 @@ import time
 
 _dataset = "mnist"
 
-_urls = {"http://deeplearning.net/data/mnist/mnist.pkl.gz": "mnist.pkl.gz"}
+_urls = {"mnist.pkl.gz": "http://deeplearning.net/data/mnist/mnist.pkl.gz"}
+SHAPE = (1, 28, 28)
+N_SAMPLES = 60000
 
 
 def load(path=None):
@@ -44,10 +46,7 @@ def load(path=None):
 
     """
 
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
-    download_dataset(path, _dataset, _urls)
+    download_dataset(_dataset, _urls, path)
 
     t0 = time.time()
 
@@ -58,27 +57,22 @@ def load(path=None):
     f.close()
 
     train_set = (
-        train_set[0].reshape((-1, 1, 28, 28)).astype("float32"),
+        train_set[0].reshape((-1, 28, 28, 1)).astype("float32"),
         train_set[1].astype("int32"),
     )
     test_set = (
-        test_set[0].reshape((-1, 1, 28, 28)).astype("float32"),
+        test_set[0].reshape((-1, 28, 28, 1)).astype("float32"),
         test_set[1].astype("int32"),
     )
     valid_set = (
-        valid_set[0].reshape((-1, 1, 28, 28)).astype("float32"),
+        valid_set[0].reshape((-1, 28, 28, 1)).astype("float32"),
         valid_set[1].astype("int32"),
     )
-
-    data = {
-        "train_set/images": train_set[0],
-        "train_set/labels": train_set[1],
-        "test_set/images": test_set[0],
-        "test_set/labels": test_set[1],
-        "valid_set/images": valid_set[0],
-        "valid_set/labels": valid_set[1],
+    dataset = {
+        "train": {"X": train_set[0], "y": train_set[1]},
+        "test": {"X": test_set[0], "y": test_set[1]},
+        "val": {"X": valid_set[0], "y": valid_set[1]},
     }
-
     print("Dataset mnist loaded in {0:.2f}s.".format(time.time() - t0))
 
-    return data
+    return dataset

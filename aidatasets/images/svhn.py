@@ -3,14 +3,15 @@ import os
 from ..utils import download_dataset
 import numpy as np
 import time
+from pathlib import Path
 
-
-_dataset = "svhn"
-_baseurl = "http://ufldl.stanford.edu/housenumbers/"
+_name = "svhn"
 _urls = {
-    "train_32x32.mat": "train_32x32.mat",
-    "test_32x32.mat": "test_32x32.mat",
+    "train_32x32.mat": "http://ufldl.stanford.edu/housenumbers/train_32x32.mat",
+    "test_32x32.mat": "http://ufldl.stanford.edu/housenumbers/test_32x32.mat",
 }
+SHAPE = (3, 32, 32)
+N_SAMPLES = 73257
 
 
 def load(path=None):
@@ -47,10 +48,8 @@ def load(path=None):
 
 
     """
-    if path is None:
-        path = os.environ["DATASET_PATH"]
 
-    download_dataset(path, _dataset, _urls, _baseurl)
+    download_dataset(_name, _urls, path=path)
 
     # Load the dataset (download if necessary) and set
     # the class attributess.
@@ -59,20 +58,20 @@ def load(path=None):
     t0 = time.time()
 
     # Train set
-    data = sio.loadmat(path + "svhn/train_32x32.mat")
-    train_images = data["X"].transpose([3, 2, 0, 1])
+    data = sio.loadmat(Path(path) / "svhn/train_32x32.mat")
+    train_images = data["X"].transpose([3, 0, 1, 2])
     train_labels = np.squeeze(data["y"]) - 1
 
     # Test set
-    data = sio.loadmat(path + "svhn/test_32x32.mat")
-    test_images = data["X"].transpose([3, 2, 0, 1])
+    data = sio.loadmat(Path(path) / "svhn/test_32x32.mat")
+    test_images = data["X"].transpose([3, 0, 1, 2])
     test_labels = np.squeeze(data["y"]) - 1
 
     print("Dataset svhn loaded in", "{0:.2f}".format(time.time() - t0), "s.")
+
     dataset = {
-        "train_set/images": train_images.astype("float32"),
-        "train_set/labels": train_labels.astype("int32"),
-        "test_set/images": test_images.astype("float32"),
-        "test_set/labels": test_labels.astype("int32"),
+        "train": {"X": np.array(train_images), "y": np.array(train_labels)},
+        "val": {"X": np.array(test_images), "y": np.array(test_labels)},
     }
+
     return dataset

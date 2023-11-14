@@ -5,8 +5,10 @@ from ..utils import download_dataset
 # https://github.com/deepmind/dsprites-dataset
 
 _urls = {
-    "https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz": "dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz"
+    "dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz": "https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz"
 }
+_dataset = "dsprites"
+SHAPE = (1, 28, 28)
 
 
 def load(path=None):
@@ -42,11 +44,7 @@ def load(path=None):
             classes: array
 
     """
-
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
-    download_dataset(path, _dataset, _urls)
+    download_dataset(_dataset, _urls, path)
 
     dataset_zip = np.load("dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz")
     imgs = dataset_zip["imgs"]

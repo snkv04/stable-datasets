@@ -8,13 +8,14 @@ import zipfile
 import numpy as np
 import tqdm
 from ..utils import download_dataset
+from pathlib import Path
 
-
-_urls = {"http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip": "gzip.zip"}
+_urls = {"gzip.zip": "http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip"}
+_name = "emnist"
+SHAPE = (1, 28, 28)
 
 
 def _read_images(filename, folder):
-
     mat = folder.read(filename)
     f = gzip.open(io.BytesIO(mat), "rb")
 
@@ -47,7 +48,6 @@ def _read_images(filename, folder):
 
 
 def _read_labels(filename, folder):
-
     mat = folder.read(filename)
     f = gzip.open(io.BytesIO(mat), "rb")
 
@@ -67,7 +67,7 @@ def _read_labels(filename, folder):
     return np.array(labels)
 
 
-def load(option="byclass", path=None):
+def load(path=None, option="balanced"):
     """Grayscale digit/letter classification.
 
     The EMNIST Dataset
@@ -140,23 +140,18 @@ def load(option="byclass", path=None):
     Retrieved from http://arxiv.org/abs/1702.05373
 
     """
-    if path is None:
-        path = os.environ["DATASET_PATH"]
-
-    download_dataset(path, "EMNIST", _urls)
+    download_dataset(_name, _urls, path)
 
     # Loading the file
     print("Loading emnist")
-    folder = zipfile.ZipFile(path + "EMNIST/gzip.zip")
+    folder = zipfile.ZipFile(Path(path) / _name / "gzip.zip")
     filename = "gzip/emnist-{}-{}-{}-idx{}-ubyte.gz"
     x_test = _read_images(filename.format(option, "test", "images", 3), folder)
     x_train = _read_images(filename.format(option, "train", "images", 3), folder)
     y_test = _read_labels(filename.format(option, "test", "labels", 1), folder)
     y_train = _read_labels(filename.format(option, "train", "labels", 1), folder)
-    data = {
-        "train_set/images": x_train,
-        "train_set/labels": y_train,
-        "test_set/images": x_test,
-        "test_set/labels": y_test,
+    dataset = {
+        "train": {"X": x_train, "y": y_train},
+        "val": {"X": x_test, "y": y_test},
     }
-    return data
+    return dataset

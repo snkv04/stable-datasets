@@ -111,8 +111,11 @@ labels_list = [
 ]
 
 
-_dataset = "cifar100"
-_urls = {"https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz": "cifar100.tar.gz"}
+_name = "cifar100"
+_urls = {"cifar100.tar.gz": "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz"}
+
+N_SAMPLES = 50000
+SHAPE = (3, 32, 32)
 
 
 def load(path=None):
@@ -128,11 +131,11 @@ def load(path=None):
     if path is None:
         path = os.environ["DATASET_PATH"]
 
-    download_dataset(path, _dataset, _urls)
+    download_dataset(_name, _urls, path=path)
 
     t0 = time.time()
     # Loading the file
-    tar = tarfile.open(os.path.join(path, _dataset, "cifar100.tar.gz"), "r:gz")
+    tar = tarfile.open(os.path.join(path, _name, "cifar100.tar.gz"), "r:gz")
 
     # Loading training set
     f = tar.extractfile("cifar-100-python/train").read()
@@ -148,14 +151,17 @@ def load(path=None):
     test_fine = np.array(data["fine_labels"])
     test_coarse = np.array(data["coarse_labels"])
 
-    data = {
-        "train_set/images": train_images,
-        "train_set/labels": train_fine,
-        "train_set/coarse_labels": train_coarse,
-        "test_set/images": test_images,
-        "test_set/labels": test_fine,
-        "test_set/coarse_labels": test_coarse,
+    dataset = {
+        "train": {
+            "X": np.transpose(train_images, (0, 2, 3, 1)),
+            "y": train_fine,
+            "y_coarse": train_coarse,
+        },
+        "val": {
+            "X": np.transpose(test_images, (0, 2, 3, 1)),
+            "y": test_fine,
+            "y_coarse": test_coarse,
+        },
     }
-
     print("Dataset cifar100 loaded in {0:.2f}s.".format(time.time() - t0))
-    return data
+    return dataset
