@@ -483,7 +483,7 @@ def _download_url(url: str, filename: str, md5_checksum : str = None):
 
     if target.is_file():
         start = target.stat().st_size
-        if md5_checksum:
+        if md5_checksum is not None:
             current = hashlib.md5(open(target,'rb').read()).hexdigest()
             if current == md5_checksum:
                 return
@@ -493,15 +493,15 @@ def _download_url(url: str, filename: str, md5_checksum : str = None):
     r = requests.get(url, headers=resume_header, stream=True,  verify=False, allow_redirects=True)
     file_size = int(r.headers.get('Content-Length', 0))
 
-    desc = "(Unknown total file size)" if file_size == 0 else ""
-    r.raw.read = functools.partial(r.raw.read, decode_content=True)  # Decompress if needed
-    with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
-        with target.open("wb" if start == 0 else "ab") as f:
-            shutil.copyfileobj(r_raw, f)
-#    with _DownloadProgressBar(
-#        unit="B", unit_scale=True, miniters=1, desc=short_name
-#    ) as t:
-#        urllib.request.urlretrieve(url, filename=filename, reporthook=t.update_to)
+    if file_size == start:
+        print(f"File {filename} was already downloaded from URL {url} and has right size")
+
+    else:
+        desc = "(Unknown total file size)" if file_size == 0 else ""
+        r.raw.read = functools.partial(r.raw.read, decode_content=True)
+        with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
+            with target.open("wb" if start == 0 else "ab") as f:
+                shutil.copyfileobj(r_raw, f)
     if md5_checksum is None:
         current = hashlib.md5(open(target,'rb').read()).hexdigest()
         print("A md5 checksum was not provided, for future use please use")
