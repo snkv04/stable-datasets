@@ -18,20 +18,30 @@ import pandas as pd
 
 import torch as ch
 from typing import Dict, Union
+from PIL import Image
 
+class ImagePathsDataset(list):
+    def __getitem__(self, i):
+        return Image.open(super()[i])
 
 class Dataset(dict):
 
-    def __init__(self, path):
+    def __init__(self, path, **kwargs):
         self._path = Path(path)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     @property
     def path(self):
         return self._path
 
     @property
+    def extract(self):
+        return []
+
+    @property
     def num_classes(self):
-        raise NotImplementedError("You need to define your own num_clases method")
+        raise NotImplementedError("You need to define your own num_classes method")
 
     @property
     def name(self):
@@ -52,7 +62,7 @@ class Dataset(dict):
 
 
     def download(self):
-        download_dataset(self.name, self.urls, path=self.path)
+        download_dataset(self.name, self.urls, path=self.path, extract=self.extract)
 
     @property
     def load(self):
@@ -495,6 +505,8 @@ def _download_url(url: str, filename: str, md5_checksum : str = None):
 
     if file_size == start:
         print(f"File {filename} was already downloaded from URL {url} and has right size")
+    elif start > file_size:
+        print("File is bigger than expected...")
 
     else:
         desc = "(Unknown total file size)" if file_size == 0 else ""
@@ -512,7 +524,7 @@ def download_dataset(
     name: str,
     name_to_url: Dict[str, str],
     path: Union[str, pathlib.PosixPath] = None,
-    extract: bool = False,
+    extract: list = None,
 ):
     """dataset downlading utility
 
@@ -527,6 +539,7 @@ def download_dataset(
         and put into the prepend_url argument
 
     """
+    extract = extract or []
     if path is None:
         if "AIDATASET_PATH" in os.environ:
             path = os.environ["AIDATASET_PATH"]
@@ -549,18 +562,27 @@ def download_dataset(
             # before
             # ToDo: check for extraction...
             print("\t... {} already exists".format(filename))
-        if extract:
-            print("\t...Extracting...")
+        if filename in extract:
             to = os.path.splitext(folder / ("extracted_" + filename))[0]
             extract_file(file_path, to)
 
 
+
+def track_progress(members, total):
+    for member in tqdm(members, total=total, desc="Extracting..."):
+      yield member
+
+
 def extract_file(filename, target):
     ext = pathlib.Path(filename).suffix
-    if ext == ".tgz" or ext == ".tar.gz":
-        tar = tarfile.open(filename, "r:gz")
-        tar.extractall(target)
-        tar.close()
+    print(ext)
+    if Path(target).is_dir():
+        print("Already extracted (but not verified) leaving")
+        return
+    if ext in [".tgz", ".tar"] or str(filename)[-7:] == ".tar.gz":
+        tgz = ext == ".tgz" or str(filename)[-7:] == ".tar.gz"
+        with tarfile.open(filename, 'r:gz' if tgz else "r") as tarball:
+           tarball.extractall(path=target, members = track_progress(tarball, None))
     elif ext == ".zip":
         with zipfile.ZipFile(filename) as zip_file:
             for member in tqdm(zip_file.namelist(), desc="Extracting "):

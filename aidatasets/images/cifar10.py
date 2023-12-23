@@ -3,7 +3,7 @@ import pickle
 import tarfile
 import time
 from ..utils import download_dataset, Dataset
-
+from io import BytesIO
 import numpy as np
 from tqdm import tqdm
 
@@ -44,8 +44,7 @@ class CIFAR10(Dataset):
 
     @property
     def md5(self):
-        return {"cifar-10-python.tar.gz":"c58f30108f718f92721af3b95e74349a"}
-
+        return {"cifar-10-python.tar.gz":"58ee2103dbca0c4dda2744b6be00f177"}
     @property
     def urls(self):
         return {
@@ -108,3 +107,112 @@ class CIFAR10(Dataset):
         self["test_X"] =  np.transpose(test_images, (0, 2, 3, 1))
         self["test_y"] = test_labels
         print("Dataset cifar10 loaded in{0:.2f}s.".format(time.time() - t0))
+
+
+
+
+
+class CIFAR10C(CIFAR10):
+    """Image classification.
+    The `CIFAR-10 < https: // www.cs.toronto.edu/~kriz/cifar.html >`_ dataset
+    was collected by Alex Krizhevsky, Vinod Nair, and Geoffrey
+    Hinton. It consists of 60000 32x32 colour images in 10 classes, with
+    6000 images per class. There are 50000 training images and 10000 test images.
+    The dataset is divided into five training batches and one test batch,
+    each with 10000 images. The test batch contains exactly 1000 randomly
+    selected images from each class. The training batches contain the
+    remaining images in random order, but some training batches may
+    contain more images from one class than another. Between them, the
+    training batches contain exactly 5000 images from each class.
+
+    Parameters
+    ----------
+
+    path: str
+        default ($DATASET_PATH), the path to look for the data and
+        where the data will be downloaded if not present
+
+    corruption: str or list
+        which corruption version to use
+
+    Returns
+    -------
+
+    train_images: array
+
+    train_labels: array
+
+    test_images: array
+
+    test_labels: array
+
+    """
+
+    @property
+    def corruptions(self):
+        return ["zoom_blur",
+                "speckle_noise",
+                "spatter",
+                "snow",
+                "shot_noise",
+                "saturate",
+                "pixelate",
+                "motion_blur",
+                "jpeg_compression",
+                "impulse_noise",
+                "glass_blur",
+                "gaussian_noise",
+                "gaussian_blur",
+                "frost",
+                "fog",
+                "elastic_transform",
+                "defocus_blur",
+                "contrast",
+                "bightness",
+                ]
+
+
+    @property
+    def urls(self):
+        return {
+        "CIFAR-10-C.tar": "https://zenodo.org/records/2535967/files/CIFAR-10-C.tar?download=1"
+        }
+
+    @property
+    def md5(self):
+        return {"CIFAR-10-C.tar":"56bf5dcef84df0e2308c6dcbcbbd8499"}
+
+    @property
+    def webpage(self):
+        return "https://zenodo.org/records/2535967"
+
+    def load(self):
+        t0 = time.time()
+    
+        tar = tarfile.open(self.path / self.name / "CIFAR-10-C.tar", "r")
+    
+        # Load train set
+        array_file = BytesIO()
+        array_file.write(tar.extractfile("CIFAR-10-C/labels.npy").read())
+        array_file.seek(0)
+        labels = np.load(array_file)
+        if type(self.corruption) == str:
+            corruptions = [self.corruption]
+        else:
+            corruptions = self.corruption
+        images = []
+        names = []
+        for c in corruptions:
+            assert c in self.corruptions
+            array_file = BytesIO()
+            array_file.write(tar.extractfile(f"CIFAR-10-C/{c}.npy").read())
+            array_file.seek(0)
+            images.append(np.load(array_file))
+            names.extend([c] * 10000)
+    
+        self["X"] =  np.concatenate(images).transpose((0, 2, 3, 1))
+        self["y"] =  np.concatenate([labels for i in range(len(corruptions))])
+        self["corruption_name"] = np.array(names)
+        self["corruption_level"] = np.arange(1,6).repeat(10000).repeat(len(corruptions))
+        print("Dataset cifar10-C loaded in{0:.2f}s.".format(time.time() - t0))
+

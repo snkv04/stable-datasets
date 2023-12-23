@@ -2,7 +2,7 @@ import os
 import pickle
 import tarfile
 import time
-from ..utils import download_dataset, Dataset
+from ..utils import ImagePathsDataset, Dataset
 from PIL import Image
 
 import numpy as np
@@ -20,6 +20,10 @@ class Food101(Dataset):
         return {
         "food-101.tar.gz": "http://data.vision.ee.ethz.ch/cvl/food-101.tar.gz"
         }
+
+    @property
+    def extract(self):
+        return ["food-101.tar.gz"]
 
     @property
     def num_classes(self):
@@ -54,30 +58,31 @@ year = {2014}
                 "r:gz")
 
         print("Loading labels")
-        self.loaded_labels = tar.extractfile("food-101/meta/labels.txt").read()
+        self["labels"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/labels.txt").read_text().split("\n")
+        self["classes"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/classes.txt").read_text().split("\n")
+
         print("Loading train info")
-        train = np.loadtxt(tar.extractfile("food-101/meta/train.txt"), dtype='str')
+        train = (self.path / self.name / "extracted_food-101.tar/food-101/meta/train.txt").read_text()
         print("Loading test info")
-        test = np.loadtxt(tar.extractfile("food-101/meta/test.txt"), dtype='str')
+        test = (self.path / self.name / "extracted_food-101.tar/food-101/meta/test.txt").read_text()
+        print(loaded_labels)
+        asdf
         # Load train set
         train_images = list()
         train_labels = list()
         for name in tqdm(train, desc="Loading Train Food101", ascii=True):
-            f = tar.extractfile(f"food-101/images/{name}.jpg")
-            train_images.append(Image.open(f))
+            train_images.append(self.path / self.name / f"extracted_food-101.tar/food-101/images/{name}.jpg")
             train_labels.append(name.split("/")[0])
 
         # Load test set
         test_images = list()
         test_labels = list()
         for name in tqdm(test, desc="Loading Test Food101", ascii=True):
-            f = tar.extractfile(f"food-101/images/{name}.jpg").read()
-            test_images.append(Image.open(f))
+            test_images.append(self.path / self.name / f"extracted_food-101.tar/food-101/images/{name}.jpg")
             test_labels.append(name.split("/")[0])
 
-   
-        self["train_X"] =  np.transpose(train_images, (0, 2, 3, 1))
+        self["train_X"] =  ImagePathsDataset(train_images)
         self["train_y"] =  train_labels
-        self["test_X"] =  np.transpose(test_images, (0, 2, 3, 1))
+        self["test_X"] = ImagePathsDataset(test_images)
         self["test_y"] = test_labels
-        print("Dataset cifar10 loaded in{0:.2f}s.".format(time.time() - t0))
+        print("Dataset Food101 loaded in{0:.2f}s.".format(time.time() - t0))

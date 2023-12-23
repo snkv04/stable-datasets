@@ -3,7 +3,7 @@ import pickle
 import tarfile
 import time
 from ..utils import Dataset
-
+from io import BytesIO
 import numpy as np
 
 
@@ -158,3 +158,111 @@ class CIFAR100(Dataset):
         self["test_y"] = test_fine
         self["test_y_coarse"] = test_coarse
         print("Dataset cifar100 loaded in {0:.2f}s.".format(time.time() - t0))
+
+
+
+class CIFAR100C(CIFAR100):
+    """Image classification.
+    The `CIFAR-10 < https: // www.cs.toronto.edu/~kriz/cifar.html >`_ dataset
+    was collected by Alex Krizhevsky, Vinod Nair, and Geoffrey
+    Hinton. It consists of 60000 32x32 colour images in 10 classes, with
+    6000 images per class. There are 50000 training images and 10000 test images.
+    The dataset is divided into five training batches and one test batch,
+    each with 10000 images. The test batch contains exactly 1000 randomly
+    selected images from each class. The training batches contain the
+    remaining images in random order, but some training batches may
+    contain more images from one class than another. Between them, the
+    training batches contain exactly 5000 images from each class.
+
+    Parameters
+    ----------
+
+    path: str
+        default ($DATASET_PATH), the path to look for the data and
+        where the data will be downloaded if not present
+
+    corruption: str or list
+        which corruption version to use
+
+    Returns
+    -------
+
+    train_images: array
+
+    train_labels: array
+
+    test_images: array
+
+    test_labels: array
+
+    """
+
+    @property
+    def corruptions(self):
+        return ["zoom_blur",
+                "speckle_noise",
+                "spatter",
+                "snow",
+                "shot_noise",
+                "saturate",
+                "pixelate",
+                "motion_blur",
+                "jpeg_compression",
+                "impulse_noise",
+                "glass_blur",
+                "gaussian_noise",
+                "gaussian_blur",
+                "frost",
+                "fog",
+                "elastic_transform",
+                "defocus_blur",
+                "contrast",
+                "bightness",
+                ]
+
+
+    @property
+    def urls(self):
+        return {
+        "CIFAR-100-C.tar": "https://zenodo.org/records/3555552/files/CIFAR-100-C.tar?download=1"
+        }
+
+    @property
+    def md5(self):
+        return {"CIFAR-100-C.tar":"11f0ed0f1191edbf9fa23466ae6021d3"}
+
+    @property
+    def webpage(self):
+        return "https://zenodo.org/records/3555552"
+
+    def load(self):
+        t0 = time.time()
+    
+        tar = tarfile.open(self.path / self.name / "CIFAR-100-C.tar", "r")
+    
+        # Load train set
+        array_file = BytesIO()
+        array_file.write(tar.extractfile("CIFAR-100-C/labels.npy").read())
+        array_file.seek(0)
+        labels = np.load(array_file)
+        if type(self.corruption) == str:
+            corruptions = [self.corruption]
+        else:
+            corruptions = self.corruption
+        images = []
+        names = []
+        for c in corruptions:
+            assert c in self.corruptions
+            array_file = BytesIO()
+            array_file.write(tar.extractfile(f"CIFAR-100-C/{c}.npy").read())
+            array_file.seek(0)
+            images.append(np.load(array_file))
+            names.extend([c] * 10000)
+    
+        self["X"] =  np.concatenate(images).transpose((0, 2, 3, 1))
+        self["y"] =  np.concatenate([labels for i in range(len(corruptions))])
+        self["corruption_name"] = np.array(names)
+        self["corruption_level"] = np.arange(1,6).repeat(10000).repeat(len(corruptions))
+        print("Dataset cifar100-C loaded in{0:.2f}s.".format(time.time() - t0))
+
+

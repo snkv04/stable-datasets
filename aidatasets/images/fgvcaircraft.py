@@ -3,7 +3,8 @@ import pickle
 import tarfile
 import time
 from ..utils import Dataset
-
+from io import BytesIO
+from PIL import Image
 import numpy as np
 from tqdm import tqdm
 
@@ -11,34 +12,6 @@ from tqdm import tqdm
 
 class FGVCAircraft(Dataset):
     """Image classification.
-    The `CIFAR-10 < https: // www.cs.toronto.edu/~kriz/cifar.html >`_ dataset
-    was collected by Alex Krizhevsky, Vinod Nair, and Geoffrey
-    Hinton. It consists of 60000 32x32 colour images in 10 classes, with
-    6000 images per class. There are 50000 training images and 10000 test images.
-    The dataset is divided into five training batches and one test batch,
-    each with 10000 images. The test batch contains exactly 1000 randomly
-    selected images from each class. The training batches contain the
-    remaining images in random order, but some training batches may
-    contain more images from one class than another. Between them, the
-    training batches contain exactly 5000 images from each class.
-
-    Parameters
-    ----------
-
-    path: str (optional)
-        default ($DATASET_PATH), the path to look for the data and
-        where the data will be downloaded if not present
-
-    Returns
-    -------
-
-    train_images: array
-
-    train_labels: array
-
-    test_images: array
-
-    test_labels: array
 
     """
 
@@ -48,6 +21,10 @@ class FGVCAircraft(Dataset):
         return {
         "fgvc-aircraft-2013b.tar.gz": "https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/archives/fgvc-aircraft-2013b.tar.gz"
         }
+
+    @property
+    def extract(self):
+        return ["fgvc-aircraft-2013b.tar.gz"]
 
     @property
     def num_classes(self):
@@ -68,24 +45,22 @@ class FGVCAircraft(Dataset):
                 "r:gz")
     
         # Load train set
-        train_images = list()
-        train_labels = list()
-        for k in tqdm(range(1, 6), desc="Loading cifar10", ascii=True):
-            f = tar.extractfile("cifar-10-batches-py/data_batch_" + str(k)).read()
-            data_dic = pickle.loads(f, encoding="latin1")
-            train_images.append(data_dic["data"].reshape((-1, 3, 32, 32)))
-            train_labels.append(data_dic["labels"])
-        train_images = np.concatenate(train_images, 0)
-        train_labels = np.concatenate(train_labels, 0)
-    
-        # Load test set
-        f = tar.extractfile("cifar-10-batches-py/test_batch").read()
-        data_dic = pickle.loads(f, encoding="latin1")
-        test_images = data_dic["data"].reshape((-1, 3, 32, 32))
-        test_labels = np.array(data_dic["labels"])
-    
-        self["train_X"] =  np.transpose(train_images, (0, 2, 3, 1))
-        self["train_y"] =  train_labels
-        self["test_X"] =  np.transpose(test_images, (0, 2, 3, 1))
-        self["test_y"] = test_labels
-        print("Dataset cifar10 loaded in{0:.2f}s.".format(time.time() - t0))
+        print(tar.getmembers())
+        base = self.path / self.name / "extracted_fgvc-aircraft-2013b.tar/fgvc-aircraft-2013b/data"
+        for n in ["variants", "manufacturers", "families"]:
+            self[n] = (base / (n + ".txt")).read_text().split("\n")
+        for n in ["variant", "manufacturer", "family"]:
+            for p in ["train", "test", "val"]:
+                self[p+"_"+n] = (base / f"images_{n}_{p}.txt").read_text()
+
+        val_names = (base / "images_val.txt").read_text().split("\n")
+        train_names = (base / "images_train.txt").read_text().split("\n")
+        test_names = (base / "images_test.txt").read_text().split("\n")
+
+        train_images, test_images, val_images = [], [], []
+        for images, names, desc in zip([train_images, test_images, val_images], [train_names, test_names, val_names], ["Train", "Test", "Val"]):
+            for name in tqdm(names, desc=f"{desc} images"):
+                im = Image.open(base / "images" / f"{name}.jpg")
+                images.append(im.copy())
+                im.close()
+        print(f"Dataset {self.name} loaded in {0:.2f}s.".format(time.time() - t0))

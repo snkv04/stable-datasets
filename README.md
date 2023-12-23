@@ -25,3 +25,17 @@ train_labels = mnist['train_set/labels']
 ## Installation
 
 Installation is direct with pip as described in this [**guide**](https://numpy-datasets.readthedocs.io/en/latest/user/installation.html).
+
+
+
+# Datasets
+
+## Classification
+
+- CIFAR10
+- CIFAR10-C
+- CIFAR100
+- CIFAR100-C
+- TinyImagenet
+- TinyImagenet-C
+- MedMnistv2.1
