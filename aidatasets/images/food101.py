@@ -7,6 +7,7 @@ from PIL import Image
 
 import numpy as np
 from tqdm import tqdm
+from sklearn.preprocessing import LabelEncoder
 
 
 
@@ -58,21 +59,23 @@ year = {2014}
                 "r:gz")
 
         print("Loading labels")
-        self["labels"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/labels.txt").read_text().split("\n")
-        self["classes"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/classes.txt").read_text().split("\n")
+        self["labels"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/labels.txt").read_text().splitlines()
+        self["classes"] = (self.path / self.name / "extracted_food-101.tar/food-101/meta/classes.txt").read_text().splitlines()
 
         print("Loading train info")
-        train = (self.path / self.name / "extracted_food-101.tar/food-101/meta/train.txt").read_text()
+        train = (self.path / self.name / "extracted_food-101.tar/food-101/meta/train.txt").read_text().splitlines()
         print("Loading test info")
-        test = (self.path / self.name / "extracted_food-101.tar/food-101/meta/test.txt").read_text()
-        print(loaded_labels)
-        asdf
+        test = (self.path / self.name / "extracted_food-101.tar/food-101/meta/test.txt").read_text().splitlines()
+
         # Load train set
         train_images = list()
         train_labels = list()
         for name in tqdm(train, desc="Loading Train Food101", ascii=True):
             train_images.append(self.path / self.name / f"extracted_food-101.tar/food-101/images/{name}.jpg")
             train_labels.append(name.split("/")[0])
+
+        label_encoder = LabelEncoder().fit(train_labels)
+        train_labels = label_encoder.transform(train_labels)
 
         # Load test set
         test_images = list()
@@ -81,6 +84,7 @@ year = {2014}
             test_images.append(self.path / self.name / f"extracted_food-101.tar/food-101/images/{name}.jpg")
             test_labels.append(name.split("/")[0])
 
+        test_labels = label_encoder.transform(test_labels)
         self["train_X"] =  ImagePathsDataset(train_images)
         self["train_y"] =  train_labels
         self["test_X"] = ImagePathsDataset(test_images)

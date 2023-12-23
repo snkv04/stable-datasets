@@ -22,7 +22,7 @@ from PIL import Image
 
 class ImagePathsDataset(list):
     def __getitem__(self, i):
-        return Image.open(super()[i])
+        return Image.open(list.__getitem__(self, i)).convert("RGB")
 
 class Dataset(dict):
 
