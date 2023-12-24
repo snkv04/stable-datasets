@@ -56,14 +56,6 @@ class CIFAR10(Dataset):
         return 10
  
     @property
-    def num_samples(self):
-        return 50000
-
-    @property
-    def name(self):
-        return "CIFAR10"
-    
-    @property
     def label_to_name(self, label):
         return {
             0: "airplane",

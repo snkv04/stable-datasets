@@ -14,6 +14,7 @@ from .cub200 import CUB200
 from .svhn import SVHN
 from .rock_paper_scissor import RockPaperScissor
 from .tinyimagenet import TinyImagenet, TinyImagenetC
+from .medmnist import MedMNIST
 
 from . import (
     kmnist,
