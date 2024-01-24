@@ -16,14 +16,14 @@ from .rock_paper_scissor import RockPaperScissor
 from .tinyimagenet import TinyImagenet, TinyImagenetC
 from .medmnist import MedMNIST
 
-from . import (
-    kmnist,
-    arabic_characters,
-    arabic_digits,
-    emnist,
-    dsprites,
-    imagenette,
-    stl10,
-    celeb,
-    face_pointing,
-)
+#from . import (
+#    kmnist,
+#    arabic_characters,
+#    arabic_digits,
+#    emnist,
+#    dsprites,
+#    imagenette,
+#    stl10,
+#    celeb,
+#    face_pointing,
+#)

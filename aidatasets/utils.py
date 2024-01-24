@@ -19,18 +19,26 @@ import pandas as pd
 import torch as ch
 from typing import Dict, Union
 from PIL import Image
+import time
 
 
 class ImagePathsDataset(list):
     def __getitem__(self, i):
         return Image.open(list.__getitem__(self, i)).convert("RGB")
 
-
-class Dataset(dict):
-    def __init__(self, path, **kwargs):
-        self._path = Path(path)
+    def __init__(self, path=None, **kwargs):
+        if path is None:
+            if "AI_DATASETS_ROOT" not in os.environ:
+                raise ValueError("path can not be None unless AI_DATASETS_ROOT is set")
+            self._path = Path(os.environ["AI_DATASETS_ROOT"])
+        else:
+            self._path = Path(path)
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    @property
+    def md5(self):
+        return {}
 
     @property
     def path(self):
@@ -64,8 +72,14 @@ class Dataset(dict):
         return super().__getitem__(key)
 
     def download(self):
-        download_dataset(self.name, self.urls, path=self.path, extract=self.extract)
-        return self
+        """dataset downlading utility"""
+        folder = self.path / self.name
+        folder.mkdir(parents=True, exist_ok=True)
+        for filename, url in self.urls.items():
+            download_url(url, folder / filename, self.md5.get(filename, None))
+            if filename in self.extract:
+                to = os.path.splitext(folder / ("extracted_" + filename))[0]
+                extract_file(folder / filename, to)
 
     @property
     def load(self):
@@ -476,14 +490,7 @@ def resample_images(
     return output_images
 
 
-class _DownloadProgressBar(tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None):
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
-
-
-def _download_url(url: str, filename: str, md5_checksum: str = None):
+def download_url(url: str, filename: str, md5_checksum: str = None):
     if "drive.google.com" in url:
         import gdown
 
@@ -492,85 +499,61 @@ def _download_url(url: str, filename: str, md5_checksum: str = None):
 
     target = Path(filename).expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
-
+    start = 0
     if target.is_file():
-        start = target.stat().st_size
-        if md5_checksum is not None:
-            current = hashlib.md5(open(target, "rb").read()).hexdigest()
-            if current == md5_checksum:
-                return
-    else:
-        start = 0
-    resume_header = {"Range": f"bytes={start}-"}
+        if md5_checksum is not None and checksum(target, md5_checksum):
+            print(f"{filename} already downloaded with valid checksum")
+            return
+        else:
+            start = target.stat().st_size
     r = requests.get(
-        url, headers=resume_header, stream=True, verify=False, allow_redirects=True
+        url,
+        headers={"Range": f"bytes={start}-"},
+        stream=True,
+        verify=False,
+        allow_redirects=True,
     )
     file_size = int(r.headers.get("Content-Length", 0))
 
-    if file_size == start:
+    if file_size and file_size == start:
         print(
             f"File {filename} was already downloaded from URL {url} and has right size"
         )
-    elif start > file_size:
+    elif file_size and start > file_size:
         print("File is bigger than expected...")
-
     else:
-        desc = "(Unknown total file size)" if file_size == 0 else ""
-        r.raw.read = functools.partial(r.raw.read, decode_content=True)
-        with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
-            with target.open("wb" if start == 0 else "ab") as f:
-                shutil.copyfileobj(r_raw, f)
+        try:
+            os.open(str(target) + ".lock", os.O_CREAT | os.O_EXCL)
+            desc = str(target)
+            if file_size == 0:
+                desc += " (Unknown total file size)"
+            else:
+                desc += f" ({file_size}b)"
+            r.raw.read = functools.partial(r.raw.read, decode_content=True)
+            with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
+                with target.open("wb" if start == 0 else "ab") as f:
+                    shutil.copyfileobj(r_raw, f)
+            os.remove(str(target) + ".lock")
+        except Exception as e:
+            print(e)
+            while os.path.isfile(str(target) + ".lock"):
+                print(f"waiting for {target.name} to be downloaded by another process")
+                time.sleep(1)
+
     if md5_checksum is None:
         current = hashlib.md5(open(target, "rb").read()).hexdigest()
-        print("A md5 checksum was not provided, for future use please use")
-        print(f"{current} for file {target}")
+        print(f"A md5 checksum was not given, please use {current} for {target}")
+    else:
+        assert checksum(target, md5_checksum)
+        print("Downloaded file matches given md5 checksum")
 
 
-def download_dataset(
-    name: str,
-    name_to_url: Dict[str, str],
-    path: Union[str, pathlib.PosixPath] = None,
-    extract: list = None,
-):
-    """dataset downlading utility
-
-    Args:
-
-    path: string
-        the path where the downloaded dataset should be saved in
-
-    name_url_mapper: dict
-        dictionnary mapping filenames to their URLs. If the urls have a
-        common root, then it can be omited from this variable
-        and put into the prepend_url argument
-
-    """
-    extract = extract or []
-    if path is None:
-        if "AIDATASET_PATH" in os.environ:
-            path = os.environ["AIDATASET_PATH"]
-            print(f"path not given, using env variable {path}")
-        else:
-            raise ValueError(
-                "given path and env. variable AIDATASET_PATH can not both be undefined"
-            )
-
-    folder = pathlib.Path(path) / name
-    folder.mkdir(parents=True, exist_ok=True)
-
-    for filename, url in name_to_url.items():
-        file_path = folder / filename
-        print("\t...Downloading {}".format(filename))
-        if True:  # not file_path.exists():
-            _download_url(url, file_path)
-        else:
-            # we assume that the correct extraction process was done
-            # before
-            # ToDo: check for extraction...
-            print("\t... {} already exists".format(filename))
-        if filename in extract:
-            to = os.path.splitext(folder / ("extracted_" + filename))[0]
-            extract_file(file_path, to)
+def checksum(target, md5):
+    observed = hashlib.md5(open(target, "rb").read()).hexdigest()
+    if observed == md5:
+        return True
+    else:
+        print(f"Expected {md5} but is {observed}")
 
 
 def track_progress(members, total):
@@ -580,22 +563,29 @@ def track_progress(members, total):
 
 def extract_file(filename, target):
     ext = pathlib.Path(filename).suffix
-    print(ext)
-    if Path(target).is_dir():
-        print("Already extracted (but not verified) leaving")
-        return
-    if ext in [".tgz", ".tar"] or str(filename)[-7:] == ".tar.gz":
-        tgz = ext == ".tgz" or str(filename)[-7:] == ".tar.gz"
-        with tarfile.open(filename, "r:gz" if tgz else "r") as tarball:
-            tarball.extractall(path=target, members=track_progress(tarball, None))
-    elif ext == ".zip":
-        with zipfile.ZipFile(filename) as zip_file:
-            for member in tqdm(zip_file.namelist(), desc="Extracting "):
-                if os.path.exists(target + r"/" + member) or os.path.isfile(
-                    target + r"/" + member
-                ):
-                    continue
-                zip_file.extract(member, target)
+    try:
+        os.open(str(target) + ".lock", os.O_CREAT | os.O_EXCL)
+        if Path(target).is_dir():
+            print("Already extracted (but not verified) leaving")
+            return
+        if ext in [".tgz", ".tar"] or str(filename)[-7:] == ".tar.gz":
+            tgz = ext == ".tgz" or str(filename)[-7:] == ".tar.gz"
+            with tarfile.open(filename, "r:gz" if tgz else "r") as tarball:
+                tarball.extractall(path=target, members=track_progress(tarball, None))
+        elif ext == ".zip":
+            with zipfile.ZipFile(filename) as zip_file:
+                for member in tqdm(zip_file.namelist(), desc="Extracting "):
+                    if os.path.exists(target + r"/" + member) or os.path.isfile(
+                        target + r"/" + member
+                    ):
+                        continue
+                    zip_file.extract(member, target)
+        os.remove(str(target) + ".lock")
+    except Exception as e:
+        print(e)
+        while os.path.isfile(str(target) + ".lock"):
+            print(f"{filename} already being extracted, waiting...")
+            time.sleep(3)
 
 
 def tolist_recursive(array):

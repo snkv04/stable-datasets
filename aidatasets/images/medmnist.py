@@ -2,7 +2,7 @@ import os
 import pickle
 import tarfile
 import time
-from ..utils import download_dataset, Dataset
+from ..utils import Dataset
 from io import BytesIO
 import numpy as np
 from tqdm import tqdm

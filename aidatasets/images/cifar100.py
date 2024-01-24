@@ -129,6 +129,10 @@ class CIFAR100(Dataset):
         }
 
     @property
+    def num_classes(self):
+        return 100
+
+    @property
     def image_shape(self):
         return (3, 32, 32)
 

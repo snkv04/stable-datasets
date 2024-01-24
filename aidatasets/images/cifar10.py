@@ -2,7 +2,7 @@ import os
 import pickle
 import tarfile
 import time
-from ..utils import download_dataset, Dataset
+from ..utils import Dataset
 from io import BytesIO
 import numpy as np
 from tqdm import tqdm
@@ -43,7 +43,7 @@ class CIFAR10(Dataset):
 
     @property
     def md5(self):
-        return {"cifar-10-python.tar.gz": "58ee2103dbca0c4dda2744b6be00f177"}
+        return {"cifar-10-python.tar.gz": "c58f30108f718f92721af3b95e74349a"}
 
     @property
     def urls(self):

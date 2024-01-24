@@ -1,2 +1,10 @@
 # V0.0.0
--  Added download warm restart so that if the download process is interrupted the next attempt will restart from where it left off
+- file locking for concurent downloads
+- download recovery from partially downloaded files
+- datasets:
+  - CIFAR10/CIFAR10C
+  - CIFAR100/CIFAR100C
+  - MedMNISTv2
+  - Food101
+  - FGVCAircraft
+  - TinyImagenet/TinyImagenetC

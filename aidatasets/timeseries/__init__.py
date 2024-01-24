@@ -1,32 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from . import (
-    VoiceGenderDetection,
-    JapaneseVowels,
-    UrbanSound,
-    Phoneme,
-    MosquitoSound,
-    CatsDogs,
-    UCR_univariate,
-    UCR_multivariate,
-    audiomnist,
-    speech_commands,
-    picidae,
-    birdvox_70k,
-    birdvox_dcase_20k,
-    esc,
-    gtzan,
-    irmas,
-    freefield1010,
-    warblr,
-    sonycust,
-    TUTacousticscenes2017,
-    groove_MIDI,
-    dcase_2019_task4,
-    vocalset,
-    seizures_neonatal,
-)
+#from . import (
+#    VoiceGenderDetection,
+#    JapaneseVowels,
+#    UrbanSound,
+#    Phoneme,
+#    MosquitoSound,
+#    CatsDogs,
+#    UCR_univariate,
+#    UCR_multivariate,
+#    audiomnist,
+#    speech_commands,
+#    picidae,
+#    birdvox_70k,
+#    birdvox_dcase_20k,
+#    esc,
+#    gtzan,
+#    irmas,
+#    freefield1010,
+#    warblr,
+#    sonycust,
+#    TUTacousticscenes2017,
+#    groove_MIDI,
+#    dcase_2019_task4,
+#    vocalset,
+#    seizures_neonatal,
+#)
 
 # https://github.com/ivclab/Sound20/tree/master/spectrogram_data
 # https://www.gbif.org/dataset/b7ec1bf8-819b-11e2-bad2-00145eb45e9a
