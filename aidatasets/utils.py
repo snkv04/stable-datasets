@@ -50,6 +50,10 @@ class Dataset(dict):
         return []
 
     @property
+    def modalities(self):
+        return {}
+
+    @property
     def num_classes(self):
         raise NotImplementedError("You need to define your own num_classes method")
 
@@ -86,6 +90,21 @@ class Dataset(dict):
     @property
     def load(self):
         raise NotImplementedError("You need to define your own load method")
+
+    def enforce_RGB(self):
+        for name, modality in self.modalities.items():
+            if modality == "image":
+                if isinstance(self[name], np.ndarray):
+                    if self[name].shape[-1] == 1:
+                        print(f"enforcing Grayscale -> RGB for {name}")
+                        self[name] = np.repeat(self[name], 3, axis=-1)
+                    elif self[name].ndim == 3:
+                        print(f"enforcing Grayscale -> RGB for {name}")
+                        self[name] = np.repeat(self[name][..., None], 3, axis=-1)
+
+                else:
+                    print(f"enforcing RGB for {name}")
+                    self[name] = [x.convert("RGB") for x in self[name]]
 
 
 def as_tuple(x, N, t=None):

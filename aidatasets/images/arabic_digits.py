@@ -2,7 +2,7 @@ import os
 import numpy as np
 import io
 from tqdm import tqdm
-import matplotlib.image as mpimg
+from PIL import Image
 from zipfile import ZipFile
 from ..utils import Dataset
 
@@ -75,6 +75,10 @@ class ArabicDigits(Dataset):
     def image_shape(self):
         return (28, 28, 1)
 
+    @property
+    def modalities(self):
+        return dict(train_X="image", test_X="image", train_y=int, test_y=int)
+
     def load(self):
 
         train_images = []
@@ -86,7 +90,7 @@ class ArabicDigits(Dataset):
                 if ".png" not in entry.filename:
                     continue
                 content = archive.read(entry)
-                test_images.append(mpimg.imread(io.BytesIO(content), "png"))
+                test_images.append(Image.open(io.BytesIO(content)))
                 test_labels.append(int(entry.filename.split("_")[-1][:-4]))
 
         with ZipFile(self.path / self.name / "TrainImages.zip") as archive:
@@ -94,10 +98,10 @@ class ArabicDigits(Dataset):
                 if ".png" not in entry.filename:
                     continue
                 content = archive.read(entry)
-                train_images.append(mpimg.imread(io.BytesIO(content), "png"))
+                train_images.append(Image.open(io.BytesIO(content)))
                 train_labels.append(int(entry.filename.split("_")[-1][:-4]))
-        self["train_X"] = np.array(train_images)[..., None]
+        self["train_X"] = np.array(train_images)
         self["train_y"] = np.array(train_labels)
-        self["test_X"] = np.array(test_images)[..., None]
+        self["test_X"] = np.array(test_images)
         self["test_y"] = np.array(test_labels)
         return self

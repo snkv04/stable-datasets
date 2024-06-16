@@ -140,6 +140,17 @@ class CIFAR100(Dataset):
     def image_shape(self):
         return (32, 32, 3)
 
+    @property
+    def modalities(self):
+        return dict(
+            train_X="image",
+            test_X="image",
+            train_y=int,
+            test_y=int,
+            train_y_coarse=int,
+            test_y_coarse=int,
+        )
+
     def load(self):
         t0 = time.time()
         # Loading the file
@@ -242,6 +253,10 @@ class CIFAR100C(CIFAR100):
     @property
     def webpage(self):
         return "https://zenodo.org/records/3555552"
+
+    @property
+    def modalities(self):
+        return dict(X="image", y=int, corruption_name=str, corruption_level=int)
 
     def load(self, corruption=None):
         t0 = time.time()

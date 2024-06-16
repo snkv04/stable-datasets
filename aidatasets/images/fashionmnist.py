@@ -39,6 +39,16 @@ class FashionMNIST(Dataset):
         }
 
     @property
+    def modalities(self):
+        return dict(
+            train_X="image",
+            test_X="image",
+            val_X="image",
+            train_y="integer",
+            val_y="integer",
+        )
+
+    @property
     def image_shape(self):
         return (28, 28, 1)
 

@@ -37,6 +37,10 @@ class CUB200(Dataset):
     def num_classes(self):
         return 200
 
+    @property
+    def modalities(self):
+        return dict(train_X="image", train_y=int)
+
     def load(self, path=None):
 
         base = self.path / self.name / "extracted_CUB_200_2011/CUB_200_2011"
@@ -47,7 +51,6 @@ class CUB200(Dataset):
 
         # Load Bounding boxes
         boxes = np.loadtxt(base / "bounding_boxes.txt", dtype="int32")
-        print(boxes)
         bounding_boxes = dict()
         for i in range(boxes.shape[0]):
             bounding_boxes[str(boxes[i, 0])] = boxes[i, 1:]
@@ -60,7 +63,7 @@ class CUB200(Dataset):
             class_ = int(member.parent.name.split(".")[0]) - 1
             # image_id = member.name.split("_")[-1][:-4]
             # f = tar.extractfile(member)
-            data.append(Image.open(member).convert("RGB"))
+            data.append(Image.open(member))
             labels.append(int(class_))
             # if image_id in bounding_boxes:
             #     boxes.append(bounding_boxes[image_id])

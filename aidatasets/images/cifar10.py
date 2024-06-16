@@ -60,6 +60,10 @@ class CIFAR10(Dataset):
         return (32, 32, 3)
 
     @property
+    def modalities(self):
+        return dict(train_X="image", test_X="image", train_y=int, test_y=int)
+
+    @property
     def label_to_name(self, label):
         return {
             0: "airplane",
