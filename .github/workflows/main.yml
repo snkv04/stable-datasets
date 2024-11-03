@@ -1,14 +1,14 @@
 name: Continuous integration
 
-on:
-  # Trigger the workflow on push or pull request,
-  # but only for the master branch
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+#on:
+#  # Trigger the workflow on push or pull request,
+#  # but only for the master branch
+#  push:
+#    branches:
+#      - master
+#  pull_request:
+#    branches:
+#      - master
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - python-version: 3.6
+          - python-version: 3.9
             os: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
