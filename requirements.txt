@@ -7,7 +7,7 @@ lightning
 tensorboard
 imageio>=2.6.1
 SoundFile==0.10.3.post1
-requests==2.22.0
+requests>=2.31.0
 pretty-midi==0.2.9
 tqdm
 pydub
