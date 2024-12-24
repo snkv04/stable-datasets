@@ -1,5 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# The url is no longer valid. The code is commented out.
 
-__author__ = "Randall Balestriero"
-# https://ai.stanford.edu/%7Ejkrause/cars/car_dataset.html
+# #!/usr/bin/env python
+# # -*- coding: utf-8 -*-
+#
+# __author__ = "Randall Balestriero"
+# # https://ai.stanford.edu/%7Ejkrause/cars/car_dataset.html

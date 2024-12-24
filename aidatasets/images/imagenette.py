@@ -120,7 +120,7 @@ _IN100_CLASSES = [
 ]
 
 
-class Imagenet(datasets.GeneratorBasedBuilder):
+class Imagenette(datasets.GeneratorBasedBuilder):
     """TODO: Short description of my dataset."""
 
     VERSION = datasets.Version("1.1.0")
