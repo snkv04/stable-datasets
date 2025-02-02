@@ -1,56 +1,51 @@
+import datasets
 import os
-from ..utils import Dataset
-import time
-import zipfile
-import imageio
-from tqdm import tqdm
-import numpy as np
+from PIL import Image
 
 
-class RockPaperScissor(Dataset):
+class RockPaperScissor(datasets.GeneratorBasedBuilder):
+    """Rock Paper Scissors dataset."""
+    VERSION = datasets.Version("1.0.0")
 
-    @property
-    def urls(self):
-        return {
-                "rps.zip":"https://storage.googleapis.com/download.tensorflow.org/data/rps.zip",
-         "rps-test-set.zip":"https://storage.googleapis.com/download.tensorflow.org/data/rps-test-set.zip",
-}
+    def _info(self):
+        return datasets.DatasetInfo(
+            description="Rock Paper Scissors contains images from various hands, from different races, ages, and "
+                        "genders, posed into Rock / Paper or Scissors and labeled as such.",
+            features=datasets.Features(
+                {
+                    "image": datasets.Image(),
+                    "label": datasets.ClassLabel(names=["rock", "paper", "scissors"]),
+                }
+            ),
+            supervised_keys=("image", "label"),
+            homepage="https://laurencemoroney.com/datasets.html",
+            license="CC By 2.0",
+        )
 
-    def load(self):
-   
-    
-        t0 = time.time()
-    
-        # Loading the file
-        print("Loading mnist")
-        test_images = []
-        test_classes = []
-        test_styles = []
-        train_images = []
-        train_classes = []
-        train_styles = []
-        with zipfile.ZipFile(self.path / self.name/ "rps-test-set.zip", "r") as zfile:
-            for filename in tqdm(zfile.namelist(), desc="test set", ascii=True):
-                if ".png" not in filename:
-                    continue
-                test_classes.append(filename.split("/")[1])
-                test_styles.append(filename.split("-")[-2][-2:])
-                test_images.append(imageio.imread(zfile.read(filename)))
-    
-        with zipfile.ZipFile(self.path / self.name / "rps.zip", "r") as zfile:
-            for filename in tqdm(zfile.namelist(), desc="train set", ascii=True):
-                if ".png" not in filename:
-                    continue
-                train_classes.append(filename.split("/")[1])
-                train_styles.append(filename.split("-")[0][-2:])
-                train_images.append(imageio.imread(zfile.read(filename)))
-    
-        self["train_X"] = np.array(train_images)
-        self["train_y"] = np.array(train_classes)
-        self["train_style"] = np.array(train_styles)
-        self["test_X"] = np.array(test_images)
-        self["test_y"] = np.array(test_classes)
-        self["test_style"] = np.array(test_styles)
+    def _split_generators(self, dl_manager):
+        urls = {
+            "train": "https://storage.googleapis.com/download.tensorflow.org/data/rps.zip",
+            "test": "https://storage.googleapis.com/download.tensorflow.org/data/rps-test-set.zip",
+        }
+        extracted_paths = dl_manager.download_and_extract(urls)
+        return [
+            datasets.SplitGenerator(
+                name=datasets.Split.TRAIN,
+                gen_kwargs={"data_dir": extracted_paths["train"]},
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.TEST,
+                gen_kwargs={"data_dir": extracted_paths["test"]},
+            ),
+        ]
 
-        print("Dataset rps loaded in {0:.2f}s.".format(time.time() - t0))
-    
+    def _generate_examples(self, data_dir):
+        for root, _, files in os.walk(data_dir):
+            for file_name in files:
+                if file_name.endswith(".png"):
+                    label = os.path.basename(root)  # Folder name as label
+                    file_path = os.path.join(root, file_name)
+                    # Open image and ensure it is RGB
+                    with open(file_path, "rb") as img_file:
+                        image = Image.open(img_file).convert("RGB")
+                        yield file_path, {"image": image, "label": label}

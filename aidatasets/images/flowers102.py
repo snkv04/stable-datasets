@@ -1,79 +1,86 @@
 import os
-from io import BytesIO
-from tqdm import tqdm
-import pickle
 import tarfile
-import time
-from ..utils import Dataset
 import scipy.io
-import numpy as np
 from PIL import Image
-from pathlib import Path
+import numpy as np
+import datasets
 
-class Flowers102(Dataset):
-    """Image classification.
 
-    We have created a 102 category dataset, consisting of 102 flower categories. The flowers chosen to be flower commonly occuring in the United Kingdom. Each class consists of between 40 and 258 images. The details of the categories and the number of images for each class can be found on this category statistics page.
+class Flowers102(datasets.GeneratorBasedBuilder):
+    """Flowers102 Dataset."""
 
-The images have large scale, pose and light variations. In addition, there are categories that have large variations within the category and several very similar categories. The dataset is visualized using isomap with shape and colour features. """
+    VERSION = datasets.Version("1.0.0")
 
-    @property
-    def website(self):
-        return "https://www.robots.ox.ac.uk/~vgg/data/flowers/102/"
-
-    @property
-    def urls(self):
-        return {
-                "102flowers.tgz": "https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz",
-                "imagelabels.mat":"https://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat",
-                "setid.mat":"https://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat",
-                "102segmentations.tgz":"https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102segmentations.tgz"
+    def _info(self):
+        return datasets.DatasetInfo(
+            description="""The Flowers102 dataset is an image classification dataset consisting of 102 flower categories commonly found in the UK. Each category contains between 40 and 258 images.""",
+            features=datasets.Features(
+                {
+                    "image": datasets.Image(),
+                    "label": datasets.ClassLabel(num_classes=102),
                 }
+            ),
+            supervised_keys=("image", "label"),
+            homepage="https://www.robots.ox.ac.uk/~vgg/data/flowers/102/",
+            citation="""@inproceedings{nilsback2008flowers102,
+                         title={Automated flower classification over a large number of classes},
+                         author={Nilsback, Maria-Elena and Zisserman, Andrew},
+                         booktitle={2008 Sixth Indian conference on computer vision, graphics \& image processing},
+                         pages={722--729},
+                         year={2008},
+                         organization={IEEE}}""",
+        )
 
-    @property
-    def num_classes(self):
-        return 102
+    def _split_generators(self, dl_manager):
+        urls = {
+            "images": "https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz",
+            "labels": "https://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat",
+            "setid": "https://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat",
+        }
+        downloaded_files = dl_manager.download_and_extract(urls)
+        return [
+            datasets.SplitGenerator(
+                name=datasets.Split.TRAIN,
+                gen_kwargs={
+                    "image_dir": downloaded_files["images"],
+                    "labels_path": downloaded_files["labels"],
+                    "setid_path": downloaded_files["setid"],
+                    "split": "train",
+                },
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.VALIDATION,
+                gen_kwargs={
+                    "image_dir": downloaded_files["images"],
+                    "labels_path": downloaded_files["labels"],
+                    "setid_path": downloaded_files["setid"],
+                    "split": "valid",
+                },
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.TEST,
+                gen_kwargs={
+                    "image_dir": downloaded_files["images"],
+                    "labels_path": downloaded_files["labels"],
+                    "setid_path": downloaded_files["setid"],
+                    "split": "test",
+                },
+            ),
+        ]
 
-    @property
-    def extract(self):
-        return ["102flowers.tgz"]
-    
-    def load(self):
-    
-        t0 = time.time()
-        # Loading the file
-        # labels are 1-indexed so we shift them
-        labels = scipy.io.loadmat(self.path / self.name / "imagelabels.mat")["labels"][0] - 1
-        ids = scipy.io.loadmat(self.path / self.name / "setid.mat")
-        train_ids = list(ids["trnid"][0])
-        test_ids = list(ids["tstid"][0])
-        valid_ids = list(ids["valid"][0])
-        print(set(train_ids) - set(test_ids))
-        train_images, test_images, valid_images, train_labels, test_labels, valid_labels = [], [], [], [], [], []
-        for id_ in tqdm(train_ids, desc= "Loading train images"):
-            name = self.path / self.name / "extracted_102flowers" / "jpg" / f"image_{id_:05d}.jpg"
-            im = Image.open(name)
-            train_images.append(im.copy())
-            im.close()
-            train_labels.append(labels[id_-1])
-        for id_ in tqdm(test_ids, desc= "Loading test images"):
-            name = self.path / self.name / "extracted_102flowers" / "jpg" / f"image_{id_:05d}.jpg"
-            im = Image.open(name)
-            test_images.append(im.copy())
-            im.close()
-            test_labels.append(labels[id_-1])
-        for id_ in tqdm(valid_ids, desc= "Loading valid images"):
-            name = self.path / self.name / "extracted_102flowers" / "jpg" / f"image_{id_:05d}.jpg"
-            im = Image.open(name)
-            valid_images.append(im.copy())
-            im.close()
-            valid_labels.append(labels[id_-1])
+    def _generate_examples(self, image_dir, labels_path, setid_path, split):
+        labels = scipy.io.loadmat(labels_path)["labels"][0] - 1
+        setid = scipy.io.loadmat(setid_path)
+        if split == "train":
+            ids = setid["trnid"][0]
+        elif split == "valid":
+            ids = setid["valid"][0]
+        else:  # test
+            ids = setid["tstid"][0]
 
-        self["train_X"] = train_images
-        self["test_X"] = test_images
-        self["valid_X"] = valid_images
-        self["train_y"] = train_labels
-        self["test_y"] = test_labels
-        self["valid_y"] = valid_labels
-        print(self["train_y"])
-        print("Dataset Flowers102 loaded in {0:.2f}s.".format(time.time() - t0))
+        for idx, image_id in enumerate(ids):
+            image_path = os.path.join(image_dir, "jpg", f"image_{image_id:05d}.jpg")
+            yield idx, {
+                "image": Image.open(image_path).convert("RGB"),
+                "label": labels[image_id - 1],
+            }
