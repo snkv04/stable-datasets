@@ -11,9 +11,13 @@ from .med_mnist import MedMNIST
 # from .beans import Beans
 # from .celeb_a import CelebA
 # from .cifar10 import CIFAR10
-# from .cifar10_c import CIFAR10C
+from .cifar10_c import CIFAR10C
+
 # from .cifar100 import CIFAR100
-# from .cifar100_c import CIFAR100C
+from .cifar100_c import CIFAR100C
+from .med_mnist import MedMNIST
+
+
 # from .country211 import Country211
 # from .cub200 import CUB200
 # from .dsprites import DSprites
@@ -38,6 +42,8 @@ from .med_mnist import MedMNIST
 
 __all__ = [
     "ArabicCharacters",
+    "CIFAR10C",
+    "CIFAR100C",
     "MedMNIST",
     "Cars196",
     "DTD",
