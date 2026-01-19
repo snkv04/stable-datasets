@@ -338,6 +338,7 @@ def download(
     backend: str = "filesystem",
     cache_dir: str = DEFAULT_CACHE_DIR,
     progress_bar: bool = True,
+    disable_logging: bool = False,
     _progress_dict=None,
     _task_id=None,
 ) -> Path:
@@ -351,6 +352,7 @@ def download(
         backend: requests_cache backend (e.g. "filesystem").
         cache_dir: Cache directory for requests_cache.
         progress_bar: Whether to show a tqdm progress bar (for standalone use).
+        disable_logging: Whether to disable logging any output.
         _progress_dict: Internal shared dict for bulk_download progress reporting.
         _task_id: Internal task ID key for bulk_download progress reporting.
 
@@ -373,11 +375,13 @@ def download(
         # prevent concurrent downloads of the same file
         with FileLock(lock_filename):
             session = CachedSession(cache_dir, backend=backend)
-            logging.info(f"Downloading: {url}")
+            if not disable_logging:
+                logging.info(f"Downloading: {url}")
 
             head = session.head(url)
             total_size = int(head.headers.get("content-length", 0) or 0)
-            logging.info(f"Total size: {total_size} bytes")
+            if not disable_logging:
+                logging.info(f"Total size: {total_size} bytes")
 
             response = session.get(url, stream=True)
             downloaded = 0
@@ -406,15 +410,17 @@ def download(
                             "total": total_size,
                         }
 
-            if total_size and downloaded != total_size:
-                logging.error(f"Download incomplete: got {downloaded} of {total_size} bytes for {url}")
-            else:
-                logging.info(f"Download finished: {local_filename}")
+            if not disable_logging:
+                if total_size and downloaded != total_size:
+                    logging.error(f"Download incomplete: got {downloaded} of {total_size} bytes for {url}")
+                else:
+                    logging.info(f"Download finished: {local_filename}")
 
             return local_filename
 
     except Exception as e:
-        logging.error(f"Error downloading {url}: {e}")
+        if not disable_logging:
+            logging.error(f"Error downloading {url}: {e}")
         raise e
 
 
