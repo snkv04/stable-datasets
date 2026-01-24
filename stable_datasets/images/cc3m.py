@@ -18,7 +18,7 @@ from typing import Any
 from stable_datasets.utils import download, _default_dest_folder, BaseDatasetBuilder
 
 
-def call_with_timeout(func, timeout=30, log_timeout=False, *args, **kwargs) -> Any:
+def call_with_timeout(func, timeout=10, log_timeout=False, *args, **kwargs) -> Any:
     with ProcessPoolExecutor(max_workers=1) as executor:
         future = executor.submit(func, *args, **kwargs)
         try:
@@ -44,7 +44,13 @@ def safe_download(url, dest_folder, log_failure=False) -> Path | None:
         return None
 
 
-def safe_bulk_download(urls, dest_folder, num_processes=None, log_failure=False) -> list[Path | None]:
+def safe_bulk_download(
+    urls,
+    dest_folder,
+    num_processes=None,
+    log_failure=False,
+    parallel=False,
+) -> list[Path | None]:
     if num_processes is None:
         num_processes = os.cpu_count() // 2
     
@@ -53,10 +59,14 @@ def safe_bulk_download(urls, dest_folder, num_processes=None, log_failure=False)
         dest_folder=dest_folder,
         log_failure=log_failure
     )
-    results = Parallel(n_jobs=num_processes)(
-        delayed(download_func)(url)
-        for url in tqdm(urls, desc=f"Downloading {len(urls)} images")
-    )
+
+    if parallel:
+        results = Parallel(n_jobs=num_processes)(
+            delayed(download_func)(url)
+            for url in tqdm(urls, desc=f"Downloading {len(urls)} images")
+        )
+    else:
+        results = [download_func(url) for url in tqdm(urls, desc=f"Downloading {len(urls)} images")]
     return results
 
 
@@ -155,6 +165,11 @@ class CC3M(BaseDatasetBuilder):
                     urls_to_download.append(image_url)
 
                 # Downloads batch
+                logging.info(
+                    f"In batch {batch_idx} of split {split}, "
+                    f"there are {len(urls_to_download)} non-skipped images to download "
+                    f"and {skipped_downloads} already-downloaded images"
+                )
                 results = safe_bulk_download(
                     urls_to_download,
                     dest_folder=images_dir,
