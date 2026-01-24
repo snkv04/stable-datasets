@@ -17,6 +17,12 @@ from urllib.parse import urlparse
 from stable_datasets.utils import _default_dest_folder, BaseDatasetBuilder
 
 
+# Constants for downloading images
+DOWNLOAD_BATCH_SIZE = 16384
+FIRST_N_IMAGES_PER_SPLIT = None
+LOG_FAILURES = False
+
+
 async def safe_download(url, dest_folder, session, log_failure=False) -> bool:
     # Makes sure that the destination folder exists
     dest_folder.mkdir(parents=True, exist_ok=True)
@@ -81,7 +87,7 @@ class CC3M(BaseDatasetBuilder):
     SOURCE = {
         "homepage": "https://ai.google.com/research/ConceptualCaptions/download",
         "assets": {
-            # "train": "https://storage.googleapis.com/gcc-data/Train/GCC-training.tsv",
+            "train": "https://storage.googleapis.com/gcc-data/Train/GCC-training.tsv",
             "val": "https://storage.googleapis.com/gcc-data/Validation/GCC-1.1.0-Validation.tsv",
         },
         "citation": """@inproceedings{sharma-etal-2018-conceptual,
@@ -114,20 +120,27 @@ class CC3M(BaseDatasetBuilder):
             citation=self.SOURCE["citation"],
         )
 
-    def _generate_examples(self, data_path, split, download_batch_size=1024, log_failures=False):        
+    def _generate_examples(self, data_path, split):
         # Creates a subfolder for this split's images
         download_dir = getattr(self, "_raw_download_dir", _default_dest_folder())
         images_dir = Path(download_dir) / f"cc3m_{split}_images"
         images_dir.mkdir(parents=True, exist_ok=True)
 
-        # Computes batch info
+        # Computes total number of images to download
         total_lines = sum(1 for _ in open(data_path))
         assert total_lines != 0, f"No {split} images found in {data_path}"
         logging.info(f"Total number of {split} images: {total_lines}")
-        num_batches = (total_lines + download_batch_size - 1) // download_batch_size
-        last_batch_size = total_lines % download_batch_size
+        if FIRST_N_IMAGES_PER_SPLIT is not None:
+            total_lines = min(total_lines, FIRST_N_IMAGES_PER_SPLIT)
+            logging.info(f"Using only the first {total_lines} images from {split} split.")
+        else:
+            logging.info(f"Using all {total_lines} images from {split} split.")
+
+        # Computes batch info
+        num_batches = (total_lines + DOWNLOAD_BATCH_SIZE - 1) // DOWNLOAD_BATCH_SIZE
+        last_batch_size = total_lines % DOWNLOAD_BATCH_SIZE
         if last_batch_size == 0:
-            last_batch_size = download_batch_size
+            last_batch_size = DOWNLOAD_BATCH_SIZE
         logging.info(f"Total number of {split} download batches: {num_batches}")
         logging.info(f"Size of last download batch: {last_batch_size}")
 
@@ -143,7 +156,7 @@ class CC3M(BaseDatasetBuilder):
                 if batch_idx == num_batches - 1:
                     curr_batch_size = last_batch_size
                 else:
-                    curr_batch_size = download_batch_size
+                    curr_batch_size = DOWNLOAD_BATCH_SIZE
 
                 # Gets all URLs for this batch by iterating through the rows of the file
                 urls_to_download = []
@@ -177,7 +190,7 @@ class CC3M(BaseDatasetBuilder):
                     safe_bulk_download(
                         urls_to_download,
                         dest_folder=images_dir,
-                        log_failures=log_failures,
+                        log_failures=LOG_FAILURES,
                     )
                 )
                 num_succeeded = sum(results)
@@ -210,7 +223,7 @@ class CC3M(BaseDatasetBuilder):
                 try:
                     image = Image.open(image_path)
                 except Exception as e:
-                    if log_failures:
+                    if LOG_FAILURES:
                         logging.warning(f"Failed to open {image_path}: {e}")
                     invalid_images += 1
                     continue
