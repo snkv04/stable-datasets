@@ -18,6 +18,9 @@ from stable_datasets.utils import _default_dest_folder, BaseDatasetBuilder
 
 
 async def safe_download(url, dest_folder, session, log_failure=False) -> bool:
+    # Makes sure that the destination folder exists
+    dest_folder.mkdir(parents=True, exist_ok=True)
+    
     filename = os.path.basename(urlparse(url).path)
     dest_path = dest_folder / filename
     try:
