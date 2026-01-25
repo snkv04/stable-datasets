@@ -219,9 +219,14 @@ class CC3M(BaseDatasetBuilder):
                     else:
                         raise e
                 
-                # Tries to open the image
+                # Tries to open and validate the image
                 try:
                     image = Image.open(image_path)
+                    # Verifies the image data to ensure it's not corrupted. This catches
+                    # "broken data stream" errors that could occur when `image.load()` is
+                    # called. So, if an image fails verification, then it is not placed
+                    # into the dataset
+                    image.verify()
                 except Exception as e:
                     if LOG_FAILURES:
                         logging.warning(f"Failed to open {image_path}: {e}")
@@ -231,5 +236,5 @@ class CC3M(BaseDatasetBuilder):
                 # Yields the example
                 yield example_idx, {"image": image, "caption": caption}
                 example_idx += 1
-        logging.info(f"Successfully loaded {example_idx} examples from {split} split.")
+        logging.info(f"Successfully generated {example_idx} examples from {split} split.")
         logging.info(f"Invalid images (couldn't be opened): {invalid_images}")
