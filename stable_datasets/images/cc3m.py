@@ -1,5 +1,6 @@
 # Python Standard Library imports
 import csv
+import hashlib
 import os
 from functools import partial
 
@@ -19,15 +20,26 @@ from stable_datasets.utils import _default_dest_folder, BaseDatasetBuilder
 
 # Constants for downloading images
 DOWNLOAD_BATCH_SIZE = 65536
-FIRST_N_IMAGES_PER_SPLIT = None
+FIRST_N_IMAGES_PER_SPLIT = 0  # 0 takes all the images in the split
 LOG_FAILURES = False
+
+def get_unique_filename(url: str) -> str:
+    url_hash = hashlib.sha256(url.encode()).hexdigest()
+    original_filename = os.path.basename(urlparse(url).path)
+    ext = os.path.splitext(original_filename)[1] if '.' in original_filename else ''
+    return f"{url_hash}{ext}"
+
+
+def get_filepath(url: str, dest_folder: Path) -> Path:
+    filename = get_unique_filename(url)
+    return dest_folder / filename
+
 
 async def safe_download(url, dest_folder, session, log_failure=False) -> bool:
     # Makes sure that the destination folder exists
     dest_folder.mkdir(parents=True, exist_ok=True)
     
-    filename = os.path.basename(urlparse(url).path)
-    dest_path = dest_folder / filename
+    dest_path = get_filepath(url, dest_folder)
     try:
         async with session.get(url) as response:
             if response.status == 200:
@@ -129,8 +141,7 @@ class CC3M(BaseDatasetBuilder):
         total_lines = sum(1 for _ in open(data_path))
         assert total_lines != 0, f"No {split} images found in {data_path}"
         logging.info(f"Total number of {split} images: {total_lines}")
-        if FIRST_N_IMAGES_PER_SPLIT is not None and FIRST_N_IMAGES_PER_SPLIT < total_lines:
-            assert FIRST_N_IMAGES_PER_SPLIT > 0, f"Cannot only take 0 images from split {split}"
+        if FIRST_N_IMAGES_PER_SPLIT != 0 and FIRST_N_IMAGES_PER_SPLIT < total_lines:
             total_lines = FIRST_N_IMAGES_PER_SPLIT
             logging.info(f"Using only the first {total_lines} images from {split} split.")
         else:
@@ -167,7 +178,7 @@ class CC3M(BaseDatasetBuilder):
 
                     # Checks if image file already exists
                     try:
-                        if (images_dir / os.path.basename(urlparse(image_url).path)).is_file():
+                        if get_filepath(image_url, images_dir).is_file():
                             skipped_downloads += 1
                             continue
                     except OSError as e:
@@ -198,6 +209,7 @@ class CC3M(BaseDatasetBuilder):
                 failed_downloads += len(results) - num_succeeded
         logging.info(f"Successfully downloaded {successful_downloads} {split} images.")
         logging.info(f"Failed downloads: {failed_downloads}")
+        logging.info(f"Skipped downloads: {skipped_downloads}")
 
         # Second pass: opens and yields examples
         example_idx = 0
@@ -208,8 +220,7 @@ class CC3M(BaseDatasetBuilder):
                 caption, image_url = row
 
                 # Skips if the image wasn't downloaded
-                filename = os.path.basename(urlparse(image_url).path)
-                image_path = images_dir / filename
+                image_path = get_filepath(image_url, images_dir)
                 try:
                     if not image_path.is_file():
                         continue
@@ -221,12 +232,11 @@ class CC3M(BaseDatasetBuilder):
                 
                 # Tries to open and validate the image
                 try:
+                    # First verify the image is valid
+                    with Image.open(image_path) as img_check:
+                        img_check.verify()
+                    # Then open it again for actual use (verify() renders the object unusable)
                     image = Image.open(image_path)
-                    # Verifies the image data to ensure it's not corrupted. This catches
-                    # "broken data stream" errors that could occur when `image.load()` is
-                    # called. So, if an image fails verification, then it is not placed
-                    # into the dataset
-                    image.verify()
                 except Exception as e:
                     if LOG_FAILURES:
                         logging.warning(f"Failed to open {image_path}: {e}")
@@ -236,5 +246,11 @@ class CC3M(BaseDatasetBuilder):
                 # Yields the example
                 yield example_idx, {"image": image, "caption": caption}
                 example_idx += 1
+
+                # It's possible that more images than FIRST_N_IMAGES_PER_SPLIT
+                # have been downloaded in total due to previous downloads, so
+                # we check for that explicitly
+                if example_idx >= total_lines:
+                    break
         logging.info(f"Successfully generated {example_idx} examples from {split} split.")
         logging.info(f"Invalid images (couldn't be opened): {invalid_images}")
