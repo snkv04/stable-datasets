@@ -15,6 +15,7 @@ from .dsprites_noise import DSpritesNoise
 from .dsprites_scream import DSpritesScream
 from .dtd import DTD
 from .e_mnist import EMNIST
+from .face_pointing import FacePointing
 from .fashion_mnist import FashionMNIST
 from .flowers102 import Flowers102
 from .food101 import Food101
@@ -34,7 +35,7 @@ from .not_mnist import NotMNIST
 # from .imagenette import Imagenette
 # from .mnist import MNIST
 # from .places365_small import Places365Small
-# from .rock_paper_scissor import RockPaperScissor
+from .rock_paper_scissor import RockPaperScissor
 from .shapes3d import Shapes3D
 from .small_norb import SmallNORB
 from .stl10 import STL10
@@ -58,6 +59,7 @@ __all__ = [
     "DSpritesColor",
     "DSpritesNoise",
     "DSpritesScream",
+    "FacePointing",
     "DTD",
     "EMNIST",
     "FashionMNIST",
@@ -66,6 +68,7 @@ __all__ = [
     "MedMNIST",
     "NotMNIST",
     "Flowers102",
+    "RockPaperScissor",
     "Food101",
     "SVHN",
     "Shapes3D",
