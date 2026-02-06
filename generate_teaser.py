@@ -18,13 +18,13 @@ import numpy as np
 def fit_text_to_width(ax, text, sample_idx, target_width_ratio=0.95):
     """
     Fit text to a matplotlib axis by adjusting font size/weight, and truncating if needed.
-    
+
     Args:
         ax: Matplotlib axis to add text to
         text: Text string to display
         sample_idx: Index of the sample to display the text for
         target_width_ratio: Fraction of axis width to use (default: 0.95 = 95%)
-    
+
     Returns:
         The configured text object
     """
@@ -36,14 +36,14 @@ def fit_text_to_width(ax, text, sample_idx, target_width_ratio=0.95):
         (7, "normal"),
         (6, "normal"),
     ]
-    
+
     fig = ax.get_figure()
     temp_text = None
-    
+
     for fontsize, fontweight in configurations:
         if temp_text is not None:
             temp_text.remove()
-        
+
         print(f"Trying fontsize: {fontsize}, fontweight: {fontweight} for sample {sample_idx}")
         temp_text = ax.text(
             0.5,
@@ -55,17 +55,17 @@ def fit_text_to_width(ax, text, sample_idx, target_width_ratio=0.95):
             fontweight=fontweight,
             transform=ax.transAxes,
         )
-        
+
         # Measure text width
         fig.canvas.draw()
         bbox = temp_text.get_window_extent(renderer=fig.canvas.get_renderer())
         text_width = bbox.width
         ax_width = ax.get_window_extent(renderer=fig.canvas.get_renderer()).width
-        
+
         # If text fits, we're done
         if text_width <= ax_width * target_width_ratio:
             return temp_text
-    
+
     # If we get here, even the smallest font is too wide
     print(f"Truncating text for sample {sample_idx} to fit into the available width")
     fontsize, fontweight = configurations[-1]  # Use smallest configuration
@@ -77,7 +77,7 @@ def fit_text_to_width(ax, text, sample_idx, target_width_ratio=0.95):
         bbox = temp_text.get_window_extent(renderer=fig.canvas.get_renderer())
         if bbox.width <= ax_width * target_width_ratio:
             break
-    
+
     return temp_text
 
 

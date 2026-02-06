@@ -1,21 +1,20 @@
 # Python Standard Library imports
+# Third-party imports
+import asyncio
 import csv
 import hashlib
 import os
-from functools import partial
+from pathlib import Path
+from urllib.parse import urlparse
 
-# Third-party imports
-import asyncio
 import aiohttp
 import datasets
 from loguru import logger as logging
-from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
-from urllib.parse import urlparse
 
 # Local imports
-from stable_datasets.utils import _default_dest_folder, BaseDatasetBuilder
+from stable_datasets.utils import BaseDatasetBuilder, _default_dest_folder
 
 
 # Constants for downloading images
@@ -27,7 +26,7 @@ LOG_FAILURES = False
 def get_unique_filename(url: str) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     original_filename = os.path.basename(urlparse(url).path)
-    ext = os.path.splitext(original_filename)[1] if '.' in original_filename else ''
+    ext = os.path.splitext(original_filename)[1] if "." in original_filename else ""
     return f"{url_hash}{ext}"
 
 
@@ -39,7 +38,7 @@ def get_filepath(url: str, dest_folder: Path) -> Path:
 async def safe_download(url, dest_folder, session, log_failure=False) -> bool:
     # Makes sure that the destination folder exists
     dest_folder.mkdir(parents=True, exist_ok=True)
-    
+
     dest_path = get_filepath(url, dest_folder)
     try:
         async with session.get(url) as response:
@@ -74,6 +73,7 @@ async def safe_bulk_download(urls, dest_folder, concurrency=100, timeout_seconds
     ) as session:
         # Limits the number of concurrent downloads by using a semaphore
         semaphore = asyncio.Semaphore(concurrency)
+
         async def sem_download(url):
             async with semaphore:
                 return await safe_download(url, dest_folder, session, log_failure=log_failures)
@@ -124,9 +124,7 @@ class CC3M(BaseDatasetBuilder):
     def _info(self):
         return datasets.DatasetInfo(
             description="""Conceptual Captions, colloquially known as CC3M, is a dataset of 3 million images with their corresponding captions constructed by a purely automated pipeline developed at Google AI. It is a large-scale dataset typically used for image captioning.""",
-            features=datasets.Features(
-                {"image": datasets.Image(), "caption": datasets.Value("string")}
-            ),
+            features=datasets.Features({"image": datasets.Image(), "caption": datasets.Value("string")}),
             supervised_keys=("image", "caption"),
             homepage=self.SOURCE["homepage"],
             citation=self.SOURCE["citation"],
@@ -162,7 +160,7 @@ class CC3M(BaseDatasetBuilder):
         skipped_downloads = 0
         failed_downloads = 0
         with open(data_path) as f:
-            reader = csv.reader(f, delimiter='\t')
+            reader = csv.reader(f, delimiter="\t")
             for batch_idx in tqdm(range(num_batches), desc=f"Processing {split} download batches"):
                 # Finds batch size
                 if batch_idx == num_batches - 1:
@@ -216,7 +214,7 @@ class CC3M(BaseDatasetBuilder):
         example_idx = 0
         invalid_images = 0
         with open(data_path) as f:
-            reader = csv.reader(f, delimiter='\t')
+            reader = csv.reader(f, delimiter="\t")
             for row in reader:  # Re-reads file instead of using `results` to simplify logic
                 caption, image_url = row
 
@@ -230,7 +228,7 @@ class CC3M(BaseDatasetBuilder):
                         continue
                     else:
                         raise e
-                
+
                 # Tries to open and validate the image
                 try:
                     # First verify the image is valid

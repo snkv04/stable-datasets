@@ -1,13 +1,17 @@
 import random
+
+import datasets
 import numpy as np
+import torch
 from loguru import logger as logging
 from PIL import Image
 from tqdm import tqdm
-import torch
-import datasets
+
 from stable_datasets.images.cc3m import CC3M
 
+
 SAMPLES_TO_CHECK = 128
+
 
 def test_cc3m_dataset():
     # Test 1: Checks that the validation dataset is not empty
@@ -19,7 +23,7 @@ def test_cc3m_dataset():
         download_dir=download_dir,
         processed_cache_dir=processed_cache_dir,
     )
-    assert len(validation_dataset) > 0, f"Validation dataset should not be empty"
+    assert len(validation_dataset) > 0, "Validation dataset should not be empty"
     logging.info(f"Loaded {len(validation_dataset)} examples from validation split.")
 
     # Test 2: Checks that the keys are correct
@@ -37,7 +41,7 @@ def test_cc3m_dataset():
         sample = validation_dataset[idx]
         caption = sample["caption"]
         assert isinstance(caption, str), f"Caption should be a string, got {type(caption)}"
-        assert caption, f"Caption should be non-empty"
+        assert caption, "Caption should be non-empty"
 
     # Test 4: Checks that the image is a PIL image
     image = first_sample["image"]
@@ -52,10 +56,16 @@ def test_cc3m_dataset():
     # Test 6: Checks conversion to PyTorch
     validation_dataset_torch = validation_dataset.with_format("torch")
     first_torch_sample = validation_dataset_torch[0]
-    assert set(first_torch_sample.keys()) == set(first_sample.keys()), f"Keys do not match when converting to PyTorch"
-    assert type(first_torch_sample["image"]) == torch.Tensor, f"Image should be of type torch.Tensor, got {type(first_torch_sample['image'])}"
-    assert first_torch_sample["image"].shape[0] == 3, f"Image should have 3 channels, got {first_torch_sample['image'].shape[0]} channels"
-    assert first_torch_sample["image"].shape[1:] == image_np.shape[0:2], f"Image shape does not match when converting to PyTorch"
+    assert set(first_torch_sample.keys()) == set(first_sample.keys()), "Keys do not match when converting to PyTorch"
+    assert isinstance(first_torch_sample["image"], torch.Tensor), (
+        f"Image should be of type torch.Tensor, got {type(first_torch_sample['image'])}"
+    )
+    assert first_torch_sample["image"].shape[0] == 3, (
+        f"Image should have 3 channels, got {first_torch_sample['image'].shape[0]} channels"
+    )
+    assert first_torch_sample["image"].shape[1:] == image_np.shape[0:2], (
+        "Image shape does not match when converting to PyTorch"
+    )
 
     # Test 7: Checks that the training dataset is not empty
     train_dataset = CC3M(
@@ -63,7 +73,7 @@ def test_cc3m_dataset():
         download_dir=download_dir,
         processed_cache_dir=processed_cache_dir,
     )
-    assert len(train_dataset) > 0, f"Training dataset should not be empty"
+    assert len(train_dataset) > 0, "Training dataset should not be empty"
     logging.info(f"Loaded {len(train_dataset)} examples from train split.")
 
     # Test 8: Checks the "all" split
@@ -73,7 +83,9 @@ def test_cc3m_dataset():
         processed_cache_dir=processed_cache_dir,
     )
     expected_keys = {"train", "validation"}
-    assert type(dataset) == datasets.DatasetDict, f"Combined dataset should be of type datasets.DatasetDict, got {type(dataset)}"
+    assert isinstance(dataset, datasets.DatasetDict), (
+        f"Combined dataset should be of type datasets.DatasetDict, got {type(dataset)}"
+    )
     assert set(dataset.keys()) == expected_keys, f"Expected keys {expected_keys}, got {set(dataset.keys())}"
 
     # Can't be tested deterministically:
@@ -84,6 +96,7 @@ def test_cc3m_dataset():
     # at any time by invalidating the URLs, so the number of available images is not constant
 
     logging.info("All CC3M dataset tests passed successfully!")
+
 
 if __name__ == "__main__":
     test_cc3m_dataset()
