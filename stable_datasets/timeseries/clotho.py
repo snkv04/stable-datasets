@@ -1,10 +1,8 @@
 import csv
-import os
 from pathlib import Path
 
 import aiohttp
 import datasets
-from datasets import DownloadConfig
 from loguru import logger as logging
 
 from stable_datasets.utils import BaseDatasetBuilder, bulk_download
@@ -27,8 +25,8 @@ class Clotho(BaseDatasetBuilder):
         },
         "citation": """@inproceedings{9052990,
                         author={Drossos, Konstantinos and Lipping, Samuel and Virtanen, Tuomas},
-                        booktitle={ICASSP 2020 - 2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
-                        title={Clotho: an Audio Captioning Dataset}, 
+                        booktitle={ICASSP 2020 - 2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+                        title={Clotho: an Audio Captioning Dataset},
                         year={2020},
                         volume={},
                         number={},
@@ -63,12 +61,8 @@ class Clotho(BaseDatasetBuilder):
         # Configures longer timeout for large file downloads (since the
         # compressed .7z train audio file is 3.4GB in size and takes around
         # 10 minutes to download)
-        dl_manager.download_config.storage_options = {
-            "client_kwargs": {
-                "timeout": aiohttp.ClientTimeout(total=None)
-            }
-        }
-        
+        dl_manager.download_config.storage_options = {"client_kwargs": {"timeout": aiohttp.ClientTimeout(total=None)}}
+
         splits = []
         split_names = {
             "train": datasets.Split.TRAIN,
@@ -88,16 +82,18 @@ class Clotho(BaseDatasetBuilder):
             logging.info(f"Downloaded captions path: {captions_path}")
             logging.info(f"Downloaded metadata path: {metadata_path}")
 
-            splits.append(datasets.SplitGenerator(
-                name=split_names[split],
-                gen_kwargs={
-                    "audio_path": audio_path,
-                    "captions_path": captions_path,
-                    "metadata_path": metadata_path,
-                    "split": split,
-                    "original_split": original_split_names[split],
-                },
-            ))
+            splits.append(
+                datasets.SplitGenerator(
+                    name=split_names[split],
+                    gen_kwargs={
+                        "audio_path": audio_path,
+                        "captions_path": captions_path,
+                        "metadata_path": metadata_path,
+                        "split": split,
+                        "original_split": original_split_names[split],
+                    },
+                )
+            )
 
         return splits
 
@@ -122,7 +118,7 @@ class Clotho(BaseDatasetBuilder):
             freesound_link = metadata_row["sound_link"] if metadata_row["sound_link"].startswith("https://") else None
             manufacturer = metadata_row["manufacturer"]
             license = metadata_row["license"]
-            
+
             captions = []
             for i in range(1, 6):
                 captions.append(captions_row[f"caption_{i}"])
@@ -149,5 +145,5 @@ class Clotho(BaseDatasetBuilder):
                     "end_sample": end_sample,
                     "manufacturer": manufacturer,
                     "license": license,
-                }
+                },
             )
